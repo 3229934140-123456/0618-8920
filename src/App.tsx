@@ -10,6 +10,8 @@ import TaskDetail from '@/pages/TaskDetail'
 import Inspection from '@/pages/Inspection'
 import Defects from '@/pages/Defects'
 import DefectDetail from '@/pages/DefectDetail'
+import WorkOrders from '@/pages/WorkOrders'
+import PointProfile from '@/pages/PointProfile'
 import Analytics from '@/pages/Analytics'
 
 export default function App() {
@@ -27,6 +29,8 @@ export default function App() {
           <Route path="/inspection/:id" element={<Inspection />} />
           <Route path="/defects" element={<Defects />} />
           <Route path="/defects/:id" element={<DefectDetail />} />
+          <Route path="/workorders" element={<WorkOrders />} />
+          <Route path="/points/:id" element={<PointProfile />} />
           <Route path="/analytics" element={<Analytics />} />
         </Routes>
       </Layout>

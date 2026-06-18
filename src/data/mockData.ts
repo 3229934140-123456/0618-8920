@@ -47,22 +47,22 @@ export const areas: Area[] = [
 ]
 
 export const inspectionPoints: InspectionPoint[] = [
-  { id: 'ip1', areaId: 'a1', name: 'A-01号铁塔', coordinates: [31.22, 121.45], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'normal' },
-  { id: 'ip2', areaId: 'a1', name: 'A-02号铁塔', coordinates: [31.24, 121.48], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'normal' },
-  { id: 'ip3', areaId: 'a1', name: 'A-03号铁塔', coordinates: [31.21, 121.50], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'attention' },
-  { id: 'ip4', areaId: 'a1', name: 'A-04号铁塔', coordinates: [31.25, 121.43], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'abnormal' },
-  { id: 'ip5', areaId: 'a2', name: 'W-01号风机', coordinates: [38.72, 103.81], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-05', status: 'normal' },
-  { id: 'ip6', areaId: 'a2', name: 'W-02号风机', coordinates: [38.74, 103.85], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-05', status: 'attention' },
-  { id: 'ip7', areaId: 'a2', name: 'W-03号风机', coordinates: [38.71, 103.80], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-05', status: 'normal' },
-  { id: 'ip8', areaId: 'a3', name: 'V-01号阀室', coordinates: [23.12, 113.24], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-05-28', status: 'abnormal' },
-  { id: 'ip9', areaId: 'a3', name: 'V-02号阀室', coordinates: [23.14, 113.28], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-05-28', status: 'attention' },
-  { id: 'ip10', areaId: 'a3', name: 'V-03号阀室', coordinates: [23.11, 113.30], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-05-28', status: 'normal' },
-  { id: 'ip11', areaId: 'a4', name: 'C-01号铁塔', coordinates: [39.91, 116.38], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-12', status: 'normal' },
-  { id: 'ip12', areaId: 'a4', name: 'C-02号铁塔', coordinates: [39.89, 116.42], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-12', status: 'normal' },
-  { id: 'ip13', areaId: 'a5', name: 'SE-01号风机', coordinates: [25.29, 119.28], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-08', status: 'attention' },
-  { id: 'ip14', areaId: 'a5', name: 'SE-02号风机', coordinates: [25.31, 119.32], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-08', status: 'normal' },
-  { id: 'ip15', areaId: 'a6', name: 'D-01号阀室', coordinates: [30.56, 104.05], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-06-01', status: 'normal' },
-  { id: 'ip16', areaId: 'a6', name: 'D-02号阀室', coordinates: [30.58, 104.09], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-06-01', status: 'normal' },
+  { id: 'ip1', areaId: 'a1', name: 'A-01号铁塔', coordinates: [31.22, 121.45], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'normal', manufacturer: '国家电网', model: 'Z3-S220', installDate: '2018-03-15', capacity: '220kV' },
+  { id: 'ip2', areaId: 'a1', name: 'A-02号铁塔', coordinates: [31.24, 121.48], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'normal', manufacturer: '国家电网', model: 'Z3-S220', installDate: '2018-04-02', capacity: '220kV' },
+  { id: 'ip3', areaId: 'a1', name: 'A-03号铁塔', coordinates: [31.21, 121.50], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'attention', manufacturer: '国家电网', model: 'Z3-S220', installDate: '2018-05-20', capacity: '220kV' },
+  { id: 'ip4', areaId: 'a1', name: 'A-04号铁塔', coordinates: [31.25, 121.43], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-10', status: 'abnormal', manufacturer: '国家电网', model: 'Z3-S220', installDate: '2017-11-08', capacity: '220kV' },
+  { id: 'ip5', areaId: 'a2', name: 'W-01号风机', coordinates: [38.72, 103.81], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-05', status: 'normal', manufacturer: '金风科技', model: 'GW155-5.0MW', installDate: '2021-09-01', capacity: '5MW' },
+  { id: 'ip6', areaId: 'a2', name: 'W-02号风机', coordinates: [38.74, 103.85], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-05', status: 'attention', manufacturer: '金风科技', model: 'GW155-5.0MW', installDate: '2021-10-12', capacity: '5MW' },
+  { id: 'ip7', areaId: 'a2', name: 'W-03号风机', coordinates: [38.71, 103.80], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-05', status: 'normal', manufacturer: '金风科技', model: 'GW155-5.0MW', installDate: '2021-11-05', capacity: '5MW' },
+  { id: 'ip8', areaId: 'a3', name: 'V-01号阀室', coordinates: [23.12, 113.24], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-05-28', status: 'abnormal', manufacturer: '中石化', model: 'FS-1016', installDate: '2019-06-18', capacity: '1016mm' },
+  { id: 'ip9', areaId: 'a3', name: 'V-02号阀室', coordinates: [23.14, 113.28], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-05-28', status: 'attention', manufacturer: '中石化', model: 'FS-1016', installDate: '2019-07-25', capacity: '1016mm' },
+  { id: 'ip10', areaId: 'a3', name: 'V-03号阀室', coordinates: [23.11, 113.30], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-05-28', status: 'normal', manufacturer: '中石化', model: 'FS-1016', installDate: '2019-08-30', capacity: '1016mm' },
+  { id: 'ip11', areaId: 'a4', name: 'C-01号铁塔', coordinates: [39.91, 116.38], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-12', status: 'normal', manufacturer: '国家电网', model: 'Z5-S500', installDate: '2020-02-10', capacity: '500kV' },
+  { id: 'ip12', areaId: 'a4', name: 'C-02号铁塔', coordinates: [39.89, 116.42], deviceType: '铁塔', templateId: 'tpl1', lastInspectionDate: '2026-06-12', status: 'normal', manufacturer: '国家电网', model: 'Z5-S500', installDate: '2020-03-18', capacity: '500kV' },
+  { id: 'ip13', areaId: 'a5', name: 'SE-01号风机', coordinates: [25.29, 119.28], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-08', status: 'attention', manufacturer: '远景能源', model: 'EN-171-5.2MW', installDate: '2022-04-22', capacity: '5.2MW' },
+  { id: 'ip14', areaId: 'a5', name: 'SE-02号风机', coordinates: [25.31, 119.32], deviceType: '风机', templateId: 'tpl2', lastInspectionDate: '2026-06-08', status: 'normal', manufacturer: '远景能源', model: 'EN-171-5.2MW', installDate: '2022-05-10', capacity: '5.2MW' },
+  { id: 'ip15', areaId: 'a6', name: 'D-01号阀室', coordinates: [30.56, 104.05], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-06-01', status: 'normal', manufacturer: '中石油', model: 'FS-813', installDate: '2020-09-15', capacity: '813mm' },
+  { id: 'ip16', areaId: 'a6', name: 'D-02号阀室', coordinates: [30.58, 104.09], deviceType: '阀室', templateId: 'tpl3', lastInspectionDate: '2026-06-01', status: 'normal', manufacturer: '中石油', model: 'FS-813', installDate: '2020-10-28', capacity: '813mm' },
 ]
 
 export const templates: InspectionTemplate[] = [
@@ -260,21 +260,36 @@ export const defects: Defect[] = [
 export const workOrders: WorkOrder[] = [
   {
     id: 'wo1', defectId: 'd1', assignee: '陈工', status: 'in_progress',
+    priority: 'medium', dueDate: '2026-06-25',
     description: 'A-02号铁塔塔腿锈蚀处理：除锈+防腐涂装',
     repairPhotos: ['https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=steel%20tower%20rust%20repair%20sandblasting%20work&image_size=landscape_16_9'],
-    createdAt: '2026-06-11', completedAt: null, verifiedAt: null
+    processingRecords: [
+      { time: '2026-06-11 09:00', content: '工单创建并派发至陈工', operator: '系统' },
+      { time: '2026-06-12 10:30', content: '陈工已确认，订购防腐涂料和除锈设备', operator: '陈工' },
+      { time: '2026-06-15 08:00', content: '材料到位，开始入场施工，先完成塔腿除锈', operator: '陈工' },
+    ],
+    createdAt: '2026-06-11', startedAt: '2026-06-15', completedAt: null, verifiedAt: null
   },
   {
     id: 'wo2', defectId: 'd2', assignee: '刘工', status: 'pending',
+    priority: 'high', dueDate: '2026-06-22',
     description: 'W-02号风机塔筒焊缝裂纹修复：焊接+检测',
     repairPhotos: [],
-    createdAt: '2026-06-06', completedAt: null, verifiedAt: null
+    processingRecords: [
+      { time: '2026-06-06 14:00', content: '工单创建：塔筒焊缝裂纹需紧急处理', operator: '系统' },
+    ],
+    createdAt: '2026-06-06', startedAt: null, completedAt: null, verifiedAt: null
   },
   {
     id: 'wo3', defectId: 'd3', assignee: '管道保护科', status: 'pending',
+    priority: 'urgent', dueDate: '2026-06-19',
     description: 'V-01号阀室围墙外第三方施工处置：现场确认+安全距离标识',
     repairPhotos: [],
-    createdAt: '2026-06-15', completedAt: null, verifiedAt: null
+    processingRecords: [
+      { time: '2026-06-15 16:00', content: '紧急工单创建：第三方施工距离管道不足5米', operator: '系统' },
+      { time: '2026-06-15 17:30', content: '已通知施工方暂停作业，等待管道保护科现场确认', operator: '飞手张伟' },
+    ],
+    createdAt: '2026-06-15', startedAt: null, completedAt: null, verifiedAt: null
   },
 ]
 

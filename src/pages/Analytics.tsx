@@ -5,7 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend
 } from 'recharts'
-import { BarChart3, TrendingUp, TrendingDown, Shield, MapPin, ArrowUp, ArrowDown, Eye } from 'lucide-react'
+import { BarChart3, TrendingUp, TrendingDown, Shield, MapPin, ArrowUp, ArrowDown, Eye, AlertTriangle, Target, AlertCircle, Lightbulb, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 const fixedPrevCoverage: Record<string, number> = {
@@ -83,14 +84,95 @@ function getHealthBadgeClass(score: number) {
 
 const radarColors = ['#FF6B35', '#00D68F', '#0095FF']
 
+const defectTypeLabels: Record<string, string> = {
+  rust: '锈蚀问题突出',
+  crack: '裂缝集中',
+  foreign_object: '异物频繁',
+  other: '其他异常较多'
+}
+
+const severityWeights: Record<string, number> = {
+  critical: 12,
+  high: 8,
+  medium: 3,
+  low: 1
+}
+
+function calcAreaRisk(area: any, areaDefects: any[]) {
+  const openDefects = areaDefects.filter(d => d.status !== 'closed')
+  const criticalCount = openDefects.filter(d => d.severity === 'critical').length
+  const highCount = openDefects.filter(d => d.severity === 'high').length
+  const mediumCount = openDefects.filter(d => d.severity === 'medium').length
+  const lowCount = openDefects.filter(d => d.severity === 'low').length
+
+  const score = Math.min(100,
+    (1 - (area.coverage || 0) / 100) * 30 +
+    criticalCount * 12 +
+    highCount * 8 +
+    mediumCount * 3 +
+    lowCount * 1
+  )
+
+  let level = 'healthy'
+  let levelLabel = '低风险'
+  if (score >= 60) {
+    level = 'critical'
+    levelLabel = '高风险'
+  } else if (score >= 30) {
+    level = 'warning'
+    levelLabel = '中风险'
+  }
+
+  return { score: Math.round(score * 10) / 10, level, levelLabel, openCounts: { critical: criticalCount, high: highCount, medium: mediumCount, low: lowCount } }
+}
+
+function analyzeAreaFactors(area: any, areaDefects: any[], points: any[]) {
+  const openDefects = areaDefects.filter(d => d.status !== 'closed')
+
+  const typeCounts: Record<string, number> = { rust: 0, crack: 0, foreign_object: 0, other: 0 }
+  openDefects.forEach(d => { typeCounts[d.type] = (typeCounts[d.type] || 0) + 1 })
+
+  const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])
+  const topType = sortedTypes[0]?.[1] > 0 ? sortedTypes[0][0] : null
+
+  const areaPoints = points.filter(p => p.areaId === area.id)
+  const pointScores = areaPoints.map(p => {
+    const pointDefects = openDefects.filter(d => d.pointId === p.id)
+    const weightedScore = pointDefects.reduce((s, d) => s + severityWeights[d.severity] || 0, 0)
+    return { point: p, score: weightedScore, defectCount: pointDefects.length }
+  }).sort((a, b) => b.score - a.score).slice(0, 3)
+
+  return {
+    topDefectType: topType,
+    topDefectTypeLabel: topType ? defectTypeLabels[topType] : '暂无集中缺陷',
+    topPoints: pointScores
+  }
+}
+
 export default function Analytics() {
-  const { areas, defects, getDefectsByAreaId } = useAppStore()
+  const { areas, defects, points, getDefectsByAreaId, getDefectsByPointId } = useAppStore()
   const [selectedAreaId, setSelectedAreaId] = useState(areas[0]?.id ?? '')
   const [selectedDefectId, setSelectedDefectId] = useState(defects[0]?.id ?? '')
 
   const areaDefects = getDefectsByAreaId(selectedAreaId)
   const selectedDefect = defects.find(d => d.id === selectedDefectId)
   const selectedArea = areas.find(a => a.id === selectedAreaId)
+
+  const areaRiskList = areas.slice(0, 3).map(area => ({
+    area,
+    risk: calcAreaRisk(area, getDefectsByAreaId(area.id))
+  })).sort((a, b) => b.risk.score - a.risk.score)
+
+  const factorAnalysisAreas = areas.slice(0, 3).map(area => ({
+    area,
+    factors: analyzeAreaFactors(area, getDefectsByAreaId(area.id), points)
+  }))
+
+  const topRiskArea = areaRiskList[0]
+  const topRiskPoints = topRiskArea ? factorAnalysisAreas.find(f => f.area.id === topRiskArea.area.id)?.factors.topPoints || [] : []
+  const suggestion = topRiskArea && topRiskPoints.length > 0
+    ? `建议优先巡检${topRiskArea.area.name}的${topRiskPoints.slice(0, 2).map(p => p.point.name).join('、')}等点位，重点关注${factorAnalysisAreas.find(f => f.area.id === topRiskArea.area.id)?.factors.topDefectTypeLabel.replace('问题突出', '类').replace('集中', '类').replace('频繁', '类').replace('较多', '类') || '各类'}缺陷`
+    : '各区域健康状况良好，建议按计划正常巡检'
 
   const severityBreakdown = areaDefects.reduce((acc, d) => {
     acc[d.severity] = (acc[d.severity] || 0) + 1
@@ -147,6 +229,139 @@ export default function Analytics() {
           <p className="text-sm text-gray-500">巡检数据对比、缺陷进展与健康评估</p>
         </div>
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="card p-5"
+      >
+        <div className="flex items-center gap-2 mb-5">
+          <div className="w-8 h-8 rounded-lg bg-status-critical/15 flex items-center justify-center">
+            <AlertTriangle className="w-4 h-4 text-status-critical" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-white">风险评分与趋势解释</h2>
+            <p className="text-xs text-gray-500">基于缺陷严重度、覆盖率等多维度综合评估</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="w-4 h-4 text-accent" />
+              <h3 className="text-sm font-medium text-white">区域风险评分</h3>
+            </div>
+            <div className="space-y-3">
+              {areaRiskList.map(({ area, risk }) => (
+                <div key={area.id} className="bg-navy-900/50 rounded-lg p-3 border border-navy-700/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-white flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-gray-500" />
+                      {area.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`stat-number text-sm ${
+                        risk.level === 'critical' ? 'text-status-critical' :
+                        risk.level === 'warning' ? 'text-status-warning' : 'text-status-healthy'
+                      }`}>
+                        {risk.score}
+                      </span>
+                      <span className={`badge badge-${risk.level}`}>{risk.levelLabel}</span>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${risk.score}%`,
+                        background: risk.level === 'critical' ? '#FF3D71' :
+                          risk.level === 'warning' ? '#FFB800' : '#00D68F'
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-3 mt-2 text-[10px] text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-status-critical" />
+                      严重 {risk.openCounts.critical}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+                      高 {risk.openCounts.high}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-status-warning" />
+                      中 {risk.openCounts.medium}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-status-healthy" />
+                      低 {risk.openCounts.low}
+                    </span>
+                    <span className="ml-auto">覆盖率 {area.coverage}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <AlertCircle className="w-4 h-4 text-accent" />
+              <h3 className="text-sm font-medium text-white">健康分拉低因素分析</h3>
+            </div>
+            <div className="space-y-3">
+              {factorAnalysisAreas.map(({ area, factors }) => (
+                <div key={area.id} className="bg-navy-900/50 rounded-lg p-3 border border-navy-700/30">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <MapPin className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="text-sm text-white">{area.name}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] text-gray-500 w-14 shrink-0 pt-0.5">缺陷类型</span>
+                      <span className={`text-xs ${
+                        factors.topDefectType === 'rust' ? 'text-status-warning' :
+                        factors.topDefectType === 'crack' ? 'text-status-critical' :
+                        factors.topDefectType === 'foreign_object' ? 'text-accent' :
+                        'text-gray-400'
+                      }`}>
+                        {factors.topDefectTypeLabel}
+                      </span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-[10px] text-gray-500 w-14 shrink-0 pt-0.5">高风险点</span>
+                      <div className="flex flex-wrap gap-1.5 flex-1">
+                        {factors.topPoints.length > 0 ? (
+                          factors.topPoints.map(({ point, defectCount }) => (
+                            <Link
+                              key={point.id}
+                              to={`/points/${point.id}`}
+                              className="text-xs px-2 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors flex items-center gap-0.5"
+                            >
+                              {point.name}
+                              <ChevronRight className="w-3 h-3" />
+                            </Link>
+                          ))
+                        ) : (
+                            <span className="text-xs text-gray-500">暂无高风险点位</span>
+                          )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="bg-accent/5 rounded-lg p-3 border border-accent/20 flex items-start gap-2">
+                <Lightbulb className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-accent font-medium mb-0.5">下次巡检建议</p>
+                  <p className="text-xs text-gray-300">{suggestion}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div

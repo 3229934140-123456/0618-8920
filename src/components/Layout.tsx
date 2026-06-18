@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAppStore } from '@/store'
 import {
-  LayoutDashboard, MapPin, FileText, ClipboardList, Camera, AlertTriangle, BarChart3,
+  LayoutDashboard, MapPin, FileText, ClipboardList, Camera, AlertTriangle, Wrench, BarChart3,
   ChevronLeft, ChevronRight, Zap, Settings, User
 } from 'lucide-react'
 
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/tasks', label: '任务调度', icon: ClipboardList },
   { path: '/inspection/t3', label: '巡检执行', icon: Camera },
   { path: '/defects', label: '缺陷与工单', icon: AlertTriangle },
+  { path: '/workorders', label: '维修计划', icon: Wrench },
   { path: '/analytics', label: '数据分析', icon: BarChart3 },
 ]
 

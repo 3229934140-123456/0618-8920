@@ -1,7 +1,7 @@
 import { useAppStore } from '@/store'
 import { defectTrendData } from '@/data/mockData'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie } from 'recharts'
-import { Shield, AlertTriangle, ClipboardCheck, MapPin, ArrowRight, Clock, CheckCircle2, XCircle, Zap } from 'lucide-react'
+import { Shield, AlertTriangle, ClipboardCheck, MapPin, ArrowRight, Clock, CheckCircle2, XCircle, Zap, UserPlus, Play, FileCheck, Wrench, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
@@ -115,38 +115,115 @@ function TaskList({ tasks }: { tasks: any[] }) {
   )
 }
 
-function TodoList({ defects, tasks }: { defects: any[]; tasks: any[] }) {
-  const todos = [
-    ...defects.filter(d => d.status === 'pending' || d.status === 'confirmed').map(d => ({
-      key: d.id, label: d.aiDescription.slice(0, 22) + '…', severity: d.severity as string, to: `/defects/${d.id}`
-    })),
-    ...tasks.filter(t => t.status === 'overdue').map(t => ({
-      key: t.id, label: `逾期任务：${t.scheduledDate}`, severity: 'critical', to: `/tasks/${t.id}`
-    })),
-  ].slice(0, 5)
+function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]; workOrders: any[] }) {
+  const pendingTasks = tasks.filter(t => t.status === 'pending').length
+  const assignedTasks = tasks.filter(t => t.status === 'assigned' || t.status === 'in_progress').length
+  const pendingDefects = defects.filter(d => d.status === 'pending').length
+  const workOrderPending = workOrders.filter(w => w.status === 'pending').length
+  const repairingDefects = defects.filter(d => d.status === 'repairing').length
+  const workOrderCompleted = workOrders.filter(w => w.status === 'completed').length
+  const closedLoop = defects.filter(d => d.status === 'closed').length
+
+  const todoItems = [
+    {
+      key: 'claim',
+      label: '待领取任务',
+      icon: UserPlus,
+      count: pendingTasks,
+      color: 'text-status-info bg-status-info/15',
+      badge: 'badge-info',
+      to: '/tasks',
+      urgency: 'info'
+    },
+    {
+      key: 'execute',
+      label: '待执行任务',
+      icon: Play,
+      count: assignedTasks,
+      color: 'text-status-info bg-status-info/15',
+      badge: 'badge-info',
+      to: '/tasks',
+      urgency: 'info'
+    },
+    {
+      key: 'confirm',
+      label: '待确认缺陷',
+      icon: Eye,
+      count: pendingDefects,
+      color: 'text-status-info bg-status-info/15',
+      badge: 'badge-info',
+      to: '/defects',
+      urgency: 'info'
+    },
+    {
+      key: 'wo-pending',
+      label: '已建工单待处理',
+      icon: FileCheck,
+      count: workOrderPending,
+      color: 'text-status-warning bg-status-warning/15',
+      badge: 'badge-warning',
+      to: '/work-orders',
+      urgency: 'warning'
+    },
+    {
+      key: 'repairing',
+      label: '维修中缺陷',
+      icon: Wrench,
+      count: repairingDefects,
+      color: 'text-status-critical bg-status-critical/15',
+      badge: 'badge-critical',
+      to: '/work-orders',
+      urgency: 'critical'
+    },
+    {
+      key: 'wo-completed',
+      label: '待验收工单',
+      icon: ClipboardCheck,
+      count: workOrderCompleted,
+      color: 'text-status-critical bg-status-critical/15',
+      badge: 'badge-critical',
+      to: '/work-orders',
+      urgency: 'critical'
+    }
+  ]
+
+  const totalTodo = todoItems.reduce((s, i) => s + i.count, 0)
 
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-display font-semibold text-white">待办事项</h3>
-        <span className="badge badge-critical">{todos.length}项待处理</span>
+        <h3 className="text-sm font-display font-semibold text-white">待办统计</h3>
+        <div className="flex items-center gap-2">
+          <span className="badge badge-critical">{totalTodo}项待处理</span>
+          <span className="badge badge-healthy">已闭环 {closedLoop}</span>
+        </div>
       </div>
       <div className="space-y-2">
-        {todos.map(item => (
-          <Link key={item.key} to={item.to} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-navy-700/30 transition-colors">
-            <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${sevColor[item.severity]}`} />
-            <span className="text-sm text-gray-300 flex-1 truncate">{item.label}</span>
-            <ArrowRight className="w-3 h-3 text-gray-600" />
-          </Link>
-        ))}
-        {todos.length === 0 && <p className="text-sm text-gray-500 py-4 text-center">暂无待办</p>}
+        {todoItems.map(item => {
+          const Icon = item.icon
+          return (
+            <Link
+              key={item.key}
+              to={item.to}
+              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-navy-700/30 transition-colors group"
+            >
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.color} flex-shrink-0`}>
+                <Icon className="w-4 h-4" />
+              </div>
+              <span className="text-sm text-gray-300 flex-1 group-hover:text-white transition-colors">{item.label}</span>
+              <span className={`badge ${item.badge} stat-number`}>{item.count}</span>
+              <ArrowRight className="w-3 h-3 text-gray-600 group-hover:text-accent transition-colors" />
+            </Link>
+          )
+        })}
+        {totalTodo === 0 && <p className="text-sm text-gray-500 py-4 text-center">暂无待办，所有任务已处理！</p>}
       </div>
     </div>
   )
 }
 
 export default function Dashboard() {
-  const { areas, tasks, defects } = useAppStore()
+  const { areas, tasks, defects, workOrders } = useAppStore()
   const avgCoverage = areas.length ? (areas.reduce((s, a) => s + a.coverage, 0) / areas.length).toFixed(1) : 0
   const completedTasks = tasks.filter(t => t.status === 'completed').length
   const criticalDefects = defects.filter(d => d.severity === 'critical' || d.severity === 'high').length
@@ -175,7 +252,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 gap-4">
         <TaskList tasks={tasks} />
-        <TodoList defects={defects} tasks={tasks} />
+        <TodoList defects={defects} tasks={tasks} workOrders={workOrders} />
       </div>
     </div>
   )

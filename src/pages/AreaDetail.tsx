@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
-import { ArrowLeft, Zap, Wind, Droplets, MapPin, List, Map, Calendar, Activity, Plus, Pencil, Trash2, X, Save, Check } from 'lucide-react'
+import { ArrowLeft, Zap, Wind, Droplets, MapPin, List, Map, Calendar, Activity, Plus, Pencil, Trash2, X, Save, Check, Eye, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAppStore } from '@/store'
 import type { Area, InspectionPoint } from '@/types'
@@ -347,10 +347,11 @@ export default function AreaDetail() {
               {points.map(point => (
                 <tr key={point.id} className="table-row">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      <span className="text-white">{point.name}</span>
-                    </div>
+                    <Link to={`/points/${point.id}`} className="flex items-center gap-2 hover:text-accent transition-colors group">
+                      <MapPin className="w-4 h-4 text-gray-500 group-hover:text-accent transition-colors" />
+                      <span className="text-white group-hover:text-accent transition-colors">{point.name}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-accent transition-colors opacity-0 group-hover:opacity-100" />
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-300">{point.deviceType}</td>
                   <td className="px-4 py-3">
@@ -361,6 +362,13 @@ export default function AreaDetail() {
                   <td className="px-4 py-3 text-gray-400">{point.lastInspectionDate || '暂无'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
+                      <Link
+                        to={`/points/${point.id}`}
+                        className="p-1.5 rounded-md text-gray-400 hover:text-status-info hover:bg-navy-700 transition-colors"
+                        title="设备档案"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
                       <button
                         onClick={() => openEditPointModal(point)}
                         className="p-1.5 rounded-md text-gray-400 hover:text-accent hover:bg-navy-700 transition-colors"
@@ -421,7 +429,14 @@ export default function AreaDetail() {
                       {statusLabels[point.status]}
                     </span></p>
                     <p>上次巡检：{point.lastInspectionDate || '暂无'}</p>
-                    <div className="flex gap-1 mt-2">
+                    <div className="flex gap-1 mt-2 flex-wrap">
+                      <a
+                        href={`/#/points/${point.id}`}
+                        className="text-xs px-2 py-1 rounded bg-status-info/20 text-status-info hover:bg-status-info/30 transition-colors flex items-center gap-1"
+                      >
+                        <Eye style={{ width: 12, height: 12 }} />
+                        设备档案
+                      </a>
                       <button
                         onClick={() => { openEditPointModal(point) }}
                         className="text-xs px-2 py-1 rounded bg-accent/20 text-accent hover:bg-accent/30 transition-colors"
@@ -434,6 +449,14 @@ export default function AreaDetail() {
                       >
                         删除
                       </button>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-navy-700/30">
+                      <a
+                        href={`/#/points/${point.id}`}
+                        className="text-xs text-accent hover:underline flex items-center gap-0.5"
+                      >
+                        查看完整设备档案 <ChevronRight style={{ width: 12, height: 12 }} />
+                      </a>
                     </div>
                   </div>
                 </Popup>

@@ -149,7 +149,7 @@ export default function DefectDetail() {
 
   const handleCreateWorkOrder = () => {
     if (!woAssignee.trim() || !woDescription.trim()) return
-    createWorkOrder(defect.id, woAssignee, woDescription)
+    createWorkOrder({ defectId: defect.id, assignee: woAssignee, description: woDescription })
     setShowWoForm(false)
     setWoAssignee('')
     setWoDescription('')

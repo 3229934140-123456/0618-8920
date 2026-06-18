@@ -19,6 +19,10 @@ export interface InspectionPoint {
   templateId: string
   lastInspectionDate: string | null
   status: 'normal' | 'attention' | 'abnormal'
+  manufacturer?: string
+  installDate?: string
+  model?: string
+  capacity?: string
 }
 
 export interface InspectionTemplate {
@@ -98,10 +102,14 @@ export interface WorkOrder {
   id: string
   defectId: string
   assignee: string
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  dueDate: string
   status: 'pending' | 'in_progress' | 'completed' | 'verified'
   description: string
   repairPhotos: string[]
+  processingRecords: { time: string; content: string; operator: string }[]
   createdAt: string
+  startedAt: string | null
   completedAt: string | null
   verifiedAt: string | null
 }
@@ -120,3 +128,4 @@ export type DefectType = Defect['type']
 export type DefectSeverity = Defect['severity']
 export type DefectStatus = Defect['status']
 export type WorkOrderStatus = WorkOrder['status']
+export type WorkOrderPriority = WorkOrder['priority']
