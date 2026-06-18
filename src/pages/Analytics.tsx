@@ -3,10 +3,41 @@ import { useAppStore } from '@/store'
 import { coverageTrendData, healthScoreData } from '@/data/mockData'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend, BarChart, Bar, Cell
+  RadarChart, PolarGrid, PolarAngleAxis, Radar, Legend
 } from 'recharts'
 import { BarChart3, TrendingUp, TrendingDown, Shield, MapPin, ArrowUp, ArrowDown, Eye } from 'lucide-react'
 import { motion } from 'framer-motion'
+
+const fixedPrevCoverage: Record<string, number> = {
+  a1: 92.5, a2: 84.1, a3: 70.8, a4: 91.0, a5: 80.5, a6: 89.3
+}
+const fixedPrevDefectCount: Record<string, number> = {
+  a1: 2, a2: 3, a3: 5, a4: 1, a5: 2, a6: 1
+}
+const fixedSeverityPrevDiffs: Record<string, Record<string, number>> = {
+  low: { a1: 0, a2: 1, a3: 1, a4: 0, a5: 0, a6: 0 },
+  medium: { a1: 1, a2: 1, a3: 2, a4: 0, a5: 1, a6: 1 },
+  high: { a1: 1, a2: 0, a3: 1, a4: 1, a5: 0, a6: 0 },
+  critical: { a1: 0, a2: 1, a3: 1, a4: 0, a5: 1, a6: 0 },
+}
+const fixedHealthTrend: Record<string, number> = {
+  '华东220kV高压线A段': 88,
+  '西北风电场一期': 81,
+  '华南天然气管线B段': 65,
+  '华北500kV高压线C段': 87,
+  '东南沿海风电场二期': 77,
+  '西南油气管道D段': 85
+}
+
+const healthScoreAreaIds = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6']
+const healthScoreAreaNames = [
+  '华东220kV高压线A段',
+  '西北风电场一期',
+  '华南天然气管线B段',
+  '华北500kV高压线C段',
+  '东南沿海风电场二期',
+  '西南油气管道D段'
+]
 
 const severityColors: Record<string, string> = {
   low: '#00D68F',
@@ -66,8 +97,8 @@ export default function Analytics() {
     return acc
   }, {} as Record<string, number>)
 
-  const prevCoverage = selectedArea ? Math.min(selectedArea.coverage - 3.2 + Math.random() * 4, 100) : 0
-  const prevDefectCount = Math.max(areaDefects.length - 1, 0)
+  const prevCoverage = selectedArea ? (fixedPrevCoverage[selectedArea.id] ?? 0) : 0
+  const prevDefectCount = selectedArea ? (fixedPrevDefectCount[selectedArea.id] ?? 0) : 0
 
   const areaCoverageData = areas.map(a => ({
     name: a.name.length > 8 ? a.name.slice(0, 8) + '…' : a.name,
@@ -84,9 +115,24 @@ export default function Analytics() {
   ]
 
   const rankingData = healthScoreData.map((h, i) => {
-    const prevOverall = h.overall + (Math.random() * 6 - 3)
-    return { ...h, trend: h.overall >= prevOverall ? 'up' : 'down', rank: i + 1 }
+    const areaId = healthScoreAreaIds[i]
+    const areaName = healthScoreAreaNames[i]
+    const prevOverall = fixedHealthTrend[areaName] ?? h.overall
+    return {
+      ...h,
+      areaId,
+      area: areaName,
+      trend: h.overall >= prevOverall ? 'up' : 'down',
+      rank: i + 1
+    }
   }).sort((a, b) => b.overall - a.overall)
+
+  const getPrevSeverityCount = (sev: string) => {
+    const diffs = fixedSeverityPrevDiffs[sev]
+    const diff = selectedArea && diffs ? (diffs[selectedArea.id] ?? 0) : 0
+    const current = severityBreakdown[sev] || 0
+    return Math.max(current - diff, 0)
+  }
 
   const currentDefectStep = selectedDefect ? statusOrder[selectedDefect.status] : -1
 
@@ -103,7 +149,6 @@ export default function Analytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 巡检对比 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -142,11 +187,11 @@ export default function Analytics() {
               </p>
               <div className="mt-3 space-y-1">
                 <p className="text-[10px] text-gray-500">严重度分布</p>
-                {(Object.entries(severityBreakdown) as [string, number][]).map(([sev]) => (
+                {(Object.keys(severityLabels) as string[]).map((sev) => (
                   <div key={sev} className="flex items-center gap-2 text-xs">
                     <span className="w-2 h-2 rounded-full" style={{ background: severityColors[sev] }} />
                     <span className="text-gray-400">{severityLabels[sev]}</span>
-                    <span className="stat-number text-gray-300">{Math.max(((severityBreakdown[sev] || 0) - 1), 0)}</span>
+                    <span className="stat-number text-gray-300">{getPrevSeverityCount(sev)}</span>
                   </div>
                 ))}
               </div>
@@ -165,11 +210,11 @@ export default function Analytics() {
               </p>
               <div className="mt-3 space-y-1">
                 <p className="text-[10px] text-gray-500">严重度分布</p>
-                {(Object.entries(severityBreakdown) as [string, number][]).map(([sev, count]) => (
+                {(Object.keys(severityLabels) as string[]).map((sev) => (
                   <div key={sev} className="flex items-center gap-2 text-xs">
                     <span className="w-2 h-2 rounded-full" style={{ background: severityColors[sev] }} />
                     <span className="text-gray-400">{severityLabels[sev]}</span>
-                    <span className="stat-number text-gray-300">{count}</span>
+                    <span className="stat-number text-gray-300">{severityBreakdown[sev] || 0}</span>
                   </div>
                 ))}
               </div>
@@ -177,7 +222,6 @@ export default function Analytics() {
           </div>
         </motion.div>
 
-        {/* 缺陷进展 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -270,7 +314,6 @@ export default function Analytics() {
           )}
         </motion.div>
 
-        {/* 覆盖率统计 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -320,7 +363,6 @@ export default function Analytics() {
           </div>
         </motion.div>
 
-        {/* 健康汇总 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  AlertTriangle, CheckCircle2, Clock, Wrench,
-  FileText, ArrowRight, MessageSquare
+  AlertTriangle, Check, Clock, Wrench,
+  FileText, ArrowRight, MessageSquare, User, Save, ArrowLeft, X, CheckCircle2
 } from 'lucide-react'
 import { useAppStore } from '@/store'
 import type { DefectType, DefectSeverity } from '@/types'
@@ -28,6 +28,14 @@ const workOrderTimeline = [
   { key: 'completed', label: '已完成', icon: CheckCircle2 },
   { key: 'verified', label: '已验收', icon: CheckCircle2 },
 ] as const
+
+const defectStatusLabels: Record<string, string> = {
+  pending: '待确认',
+  confirmed: '已确认',
+  work_order_created: '工单已创建',
+  repairing: '维修中',
+  closed: '已闭环',
+}
 
 function SeverityBadge({ severity }: { severity: DefectSeverity }) {
   if (severity === 'critical') {
@@ -62,6 +70,34 @@ function SeverityBadge({ severity }: { severity: DefectSeverity }) {
   )
 }
 
+function Toast({ message, type, onClose }: { message: string; type: 'success' | 'info' | 'warning'; onClose: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000)
+    return () => clearTimeout(timer)
+  }, [onClose])
+
+  const iconMap = {
+    success: <CheckCircle2 className="w-5 h-5 text-status-healthy flex-shrink-0" />,
+    info: <MessageSquare className="w-5 h-5 text-accent flex-shrink-0" />,
+    warning: <AlertTriangle className="w-5 h-5 text-status-warning flex-shrink-0" />,
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-xl shadow-2xl bg-navy-800 border border-navy-600/50"
+    >
+      {iconMap[type]}
+      <span className="text-sm text-white font-medium">{message}</span>
+      <button onClick={onClose} className="ml-1 text-gray-500 hover:text-white transition-colors">
+        <X className="w-4 h-4" />
+      </button>
+    </motion.div>
+  )
+}
+
 export default function DefectDetail() {
   const { id } = useParams<{ id: string }>()
   const { defects, areas, points, tasks, workOrders, confirmDefect, createWorkOrder, updateWorkOrderStatus, getWorkOrderByDefectId } = useAppStore()
@@ -69,16 +105,31 @@ export default function DefectDetail() {
   const [woAssignee, setWoAssignee] = useState('')
   const [woDescription, setWoDescription] = useState('')
   const [showWoForm, setShowWoForm] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'warning' } | null>(null)
 
   const defect = defects.find(d => d.id === id)
+
+  const showToast = (message: string, type: 'success' | 'info' | 'warning' = 'info') => {
+    setToast({ message, type })
+  }
+
   if (!defect) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 text-gray-500">
-        <AlertTriangle className="w-12 h-12 mb-4 text-gray-600" />
-        <p className="text-lg">未找到缺陷记录</p>
-        <Link to="/defects" className="text-accent hover:text-accent-light mt-2 text-sm">
+      <div className="space-y-6">
+        <AnimatePresence>
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        </AnimatePresence>
+        <Link to="/defects" className="btn-ghost text-sm flex items-center gap-1.5 w-fit">
+          <ArrowLeft className="w-4 h-4" />
           返回缺陷列表
         </Link>
+        <div className="flex flex-col items-center justify-center h-96 text-gray-500">
+          <AlertTriangle className="w-12 h-12 mb-4 text-gray-600" />
+          <p className="text-lg">未找到缺陷记录</p>
+          <Link to="/defects" className="text-accent hover:text-accent-light mt-2 text-sm">
+            返回缺陷列表
+          </Link>
+        </div>
       </div>
     )
   }
@@ -93,6 +144,7 @@ export default function DefectDetail() {
     if (!pilotNote.trim()) return
     confirmDefect(defect.id, pilotNote)
     setPilotNote('')
+    showToast('缺陷已确认！', 'success')
   }
 
   const handleCreateWorkOrder = () => {
@@ -101,6 +153,7 @@ export default function DefectDetail() {
     setShowWoForm(false)
     setWoAssignee('')
     setWoDescription('')
+    showToast('工单创建成功！', 'success')
   }
 
   const getNextWoStatus = () => {
@@ -118,18 +171,51 @@ export default function DefectDetail() {
     verified: '确认验收',
   }
 
+  const nextWoStatusToast: Record<string, string> = {
+    in_progress: '工单已开始处理，缺陷状态更新为维修中',
+    completed: '工单已标记完成！',
+    verified: '工单已验收通过，缺陷已闭环',
+  }
+
+  const handleAdvanceStatus = () => {
+    if (!workOrder || !nextWoStatus) return
+    updateWorkOrderStatus(workOrder.id, nextWoStatus)
+    showToast(nextWoStatusToast[nextWoStatus] || '状态已更新', 'success')
+  }
+
   const timelineIdx = workOrder
     ? workOrderTimeline.findIndex(t => t.key === workOrder.status)
     : -1
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link to="/defects" className="text-gray-500 hover:text-white transition-colors text-sm">
-          缺陷列表
-        </Link>
-        <ArrowRight className="w-3.5 h-3.5 text-gray-600" />
-        <span className="text-white text-sm font-medium">缺陷详情 {defect.id}</span>
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link to="/defects" className="btn-ghost text-sm flex items-center gap-1.5">
+            <ArrowLeft className="w-4 h-4" />
+            返回缺陷列表
+          </Link>
+          <div className="h-5 w-px bg-navy-700" />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-white text-sm font-medium">缺陷详情 {defect.id}</span>
+              <span className={`badge ${
+                defect.status === 'closed' ? 'badge-healthy' :
+                defect.status === 'repairing' ? 'badge-warning' :
+                defect.status === 'confirmed' ? 'badge-info' : 'badge-info'
+              } text-[10px]`}>
+                {defectStatusLabels[defect.status]}
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-600 mt-0.5">
+              {area?.name ?? '-'} · {point?.name ?? '-'}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -198,8 +284,9 @@ export default function DefectDetail() {
               <p className="text-xs text-gray-500 mb-1">AI描述</p>
               <p className="text-sm text-gray-300 leading-relaxed">{defect.aiDescription}</p>
             </div>
-            <div className="mt-3 text-xs text-gray-500">
-              区域: {area?.name ?? '-'} · 点位: {point?.name ?? '-'} · 创建: {defect.createdAt}
+            <div className="mt-3 text-xs text-gray-500 flex items-center gap-2">
+              <Clock className="w-3 h-3" />
+              创建: {defect.createdAt}
             </div>
           </motion.div>
 
@@ -226,7 +313,7 @@ export default function DefectDetail() {
                   disabled={!pilotNote.trim()}
                   className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <Check className="w-4 h-4" />
                   确认缺陷
                 </button>
               </div>
@@ -279,7 +366,10 @@ export default function DefectDetail() {
             {!workOrder && showWoForm && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">负责人</label>
+                  <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    负责人
+                  </label>
                   <input
                     type="text"
                     value={woAssignee}
@@ -289,7 +379,10 @@ export default function DefectDetail() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">工单描述</label>
+                  <label className="text-xs text-gray-500 mb-1 block flex items-center gap-1">
+                    <FileText className="w-3 h-3" />
+                    工单描述
+                  </label>
                   <textarea
                     value={woDescription}
                     onChange={e => setWoDescription(e.target.value)}
@@ -301,8 +394,9 @@ export default function DefectDetail() {
                   <button
                     onClick={handleCreateWorkOrder}
                     disabled={!woAssignee.trim() || !woDescription.trim()}
-                    className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary text-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    <Save className="w-4 h-4" />
                     创建
                   </button>
                   <button
@@ -323,11 +417,17 @@ export default function DefectDetail() {
                     <span className="font-mono text-sm text-gray-300">{workOrder.id}</span>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-500">负责人</span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      负责人
+                    </span>
                     <span className="text-sm text-gray-300">{workOrder.assignee}</span>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-500">创建时间</span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      创建时间
+                    </span>
                     <span className="text-sm text-gray-400">{workOrder.createdAt}</span>
                   </div>
                   {workOrder.completedAt && (
@@ -396,7 +496,7 @@ export default function DefectDetail() {
 
                 {nextWoStatus && (
                   <button
-                    onClick={() => updateWorkOrderStatus(workOrder.id, nextWoStatus)}
+                    onClick={handleAdvanceStatus}
                     className="btn-primary text-sm w-full flex items-center justify-center gap-2"
                   >
                     <ArrowRight className="w-4 h-4" />
