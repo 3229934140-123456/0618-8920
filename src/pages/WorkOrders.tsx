@@ -89,7 +89,7 @@ export default function WorkOrders() {
   const [areaFilter, setAreaFilter] = useState<string>('all')
   const [assigneeSearch, setAssigneeSearch] = useState('')
   const [weekOffset, setWeekOffset] = useState(0)
-  const [selectedWO, setSelectedWO] = useState<WorkOrder | null>(null)
+  const [selectedWOId, setSelectedWOId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const weekDates = useMemo(() => {
@@ -154,14 +154,16 @@ export default function WorkOrders() {
 
   const maxAssigneeTotal = Math.max(1, ...assigneeStats.map(s => s.total))
 
+  const selectedWO = selectedWOId ? workOrders.find(w => w.id === selectedWOId) ?? null : null
+
   const openDrawer = (wo: WorkOrder) => {
-    setSelectedWO(wo)
+    setSelectedWOId(wo.id)
     setDrawerOpen(true)
   }
 
   const closeDrawer = () => {
     setDrawerOpen(false)
-    setTimeout(() => setSelectedWO(null), 300)
+    setTimeout(() => setSelectedWOId(null), 300)
   }
 
   const selectedDefect = selectedWO ? defects.find(d => d.id === selectedWO.defectId) : null

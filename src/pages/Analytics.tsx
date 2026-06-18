@@ -158,20 +158,27 @@ export default function Analytics() {
   const selectedDefect = defects.find(d => d.id === selectedDefectId)
   const selectedArea = areas.find(a => a.id === selectedAreaId)
 
-  const areaRiskList = areas.slice(0, 3).map(area => ({
+  const areaRiskList = areas.map(area => ({
     area,
     risk: calcAreaRisk(area, getDefectsByAreaId(area.id))
   })).sort((a, b) => b.risk.score - a.risk.score)
 
-  const factorAnalysisAreas = areas.slice(0, 3).map(area => ({
+  const factorAnalysisAreas = areas.map(area => ({
     area,
     factors: analyzeAreaFactors(area, getDefectsByAreaId(area.id), points)
   }))
 
-  const topRiskArea = areaRiskList[0]
-  const topRiskPoints = topRiskArea ? factorAnalysisAreas.find(f => f.area.id === topRiskArea.area.id)?.factors.topPoints || [] : []
-  const suggestion = topRiskArea && topRiskPoints.length > 0
-    ? `建议优先巡检${topRiskArea.area.name}的${topRiskPoints.slice(0, 2).map(p => p.point.name).join('、')}等点位，重点关注${factorAnalysisAreas.find(f => f.area.id === topRiskArea.area.id)?.factors.topDefectTypeLabel.replace('问题突出', '类').replace('集中', '类').replace('频繁', '类').replace('较多', '类') || '各类'}缺陷`
+  const suggestion = areaRiskList.filter(a => a.risk.score >= 30).length > 0
+    ? (() => {
+        const highRiskAreas = areaRiskList.filter(a => a.risk.score >= 30)
+        const parts = highRiskAreas.map(a => {
+          const factors = factorAnalysisAreas.find(f => f.area.id === a.area.id)
+          const pointNames = factors?.factors.topPoints.slice(0, 2).map(p => p.point.name).join('、') || ''
+          const typeLabel = factors?.factors.topDefectTypeLabel?.replace('问题突出', '类').replace('集中', '类').replace('频繁', '类').replace('较多', '类') || '各类'
+          return pointNames ? `${a.area.name}的${pointNames}等点位（${typeLabel}缺陷）` : `${a.area.name}（${typeLabel}缺陷）`
+        })
+        return `建议优先巡检${parts.join('；')}，关注对应缺陷类型的闭环处理`
+      })()
     : '各区域健康状况良好，建议按计划正常巡检'
 
   const severityBreakdown = areaDefects.reduce((acc, d) => {

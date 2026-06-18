@@ -120,6 +120,7 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
   const assignedTasks = tasks.filter(t => t.status === 'assigned' || t.status === 'in_progress').length
   const pendingDefects = defects.filter(d => d.status === 'pending').length
   const workOrderPending = workOrders.filter(w => w.status === 'pending').length
+  const woCreatedDefects = defects.filter(d => d.status === 'work_order_created').length
   const repairingDefects = defects.filter(d => d.status === 'repairing').length
   const workOrderCompleted = workOrders.filter(w => w.status === 'completed').length
   const closedLoop = defects.filter(d => d.status === 'closed').length
@@ -159,10 +160,10 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
       key: 'wo-pending',
       label: '已建工单待处理',
       icon: FileCheck,
-      count: workOrderPending,
+      count: workOrderPending + woCreatedDefects,
       color: 'text-status-warning bg-status-warning/15',
       badge: 'badge-warning',
-      to: '/work-orders',
+      to: '/workorders',
       urgency: 'warning'
     },
     {
@@ -172,7 +173,7 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
       count: repairingDefects,
       color: 'text-status-critical bg-status-critical/15',
       badge: 'badge-critical',
-      to: '/work-orders',
+      to: '/workorders',
       urgency: 'critical'
     },
     {
@@ -182,7 +183,7 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
       count: workOrderCompleted,
       color: 'text-status-critical bg-status-critical/15',
       badge: 'badge-critical',
-      to: '/work-orders',
+      to: '/workorders',
       urgency: 'critical'
     }
   ]
