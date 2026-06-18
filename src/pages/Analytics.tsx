@@ -140,12 +140,13 @@ function analyzeAreaFactors(area: any, areaDefects: any[], points: any[]) {
     const pointDefects = openDefects.filter(d => d.pointId === p.id)
     const weightedScore = pointDefects.reduce((s, d) => s + severityWeights[d.severity] || 0, 0)
     return { point: p, score: weightedScore, defectCount: pointDefects.length }
-  }).sort((a, b) => b.score - a.score).slice(0, 3)
+  }).sort((a, b) => b.score - a.score)
 
   return {
     topDefectType: topType,
     topDefectTypeLabel: topType ? defectTypeLabels[topType] : '暂无集中缺陷',
-    topPoints: pointScores
+    allTypes: sortedTypes,
+    allPoints: pointScores
   }
 }
 
@@ -173,7 +174,7 @@ export default function Analytics() {
         const highRiskAreas = areaRiskList.filter(a => a.risk.score >= 30)
         const parts = highRiskAreas.map(a => {
           const factors = factorAnalysisAreas.find(f => f.area.id === a.area.id)
-          const pointNames = factors?.factors.topPoints.slice(0, 2).map(p => p.point.name).join('、') || ''
+          const pointNames = factors?.factors.allPoints.filter(p => p.defectCount > 0).slice(0, 2).map(p => p.point.name).join('、') || ''
           const typeLabel = factors?.factors.topDefectTypeLabel?.replace('问题突出', '类').replace('集中', '类').replace('频繁', '类').replace('较多', '类') || '各类'
           return pointNames ? `${a.area.name}的${pointNames}等点位（${typeLabel}缺陷）` : `${a.area.name}（${typeLabel}缺陷）`
         })
@@ -261,9 +262,13 @@ export default function Analytics() {
             </div>
             <div className="space-y-3">
               {areaRiskList.map(({ area, risk }) => (
-                <div key={area.id} className="bg-navy-900/50 rounded-lg p-3 border border-navy-700/30">
+                <Link
+                  key={area.id}
+                  to={`/areas/${area.id}/risk`}
+                  className="block bg-navy-900/50 rounded-lg p-3 border border-navy-700/30 hover:border-accent/40 transition-colors group"
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-white flex items-center gap-1.5">
+                    <span className="text-sm text-white flex items-center gap-1.5 group-hover:text-accent transition-colors">
                       <MapPin className="w-3.5 h-3.5 text-gray-500" />
                       {area.name}
                     </span>
@@ -275,6 +280,7 @@ export default function Analytics() {
                         {risk.score}
                       </span>
                       <span className={`badge badge-${risk.level}`}>{risk.levelLabel}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-gray-600 group-hover:text-accent transition-colors" />
                     </div>
                   </div>
                   <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
@@ -306,7 +312,7 @@ export default function Analytics() {
                     </span>
                     <span className="ml-auto">覆盖率 {area.coverage}%</span>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -317,46 +323,73 @@ export default function Analytics() {
               <h3 className="text-sm font-medium text-white">健康分拉低因素分析</h3>
             </div>
             <div className="space-y-3">
-              {factorAnalysisAreas.map(({ area, factors }) => (
-                <div key={area.id} className="bg-navy-900/50 rounded-lg p-3 border border-navy-700/30">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <MapPin className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="text-sm text-white">{area.name}</span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-gray-500 w-14 shrink-0 pt-0.5">缺陷类型</span>
-                      <span className={`text-xs ${
-                        factors.topDefectType === 'rust' ? 'text-status-warning' :
-                        factors.topDefectType === 'crack' ? 'text-status-critical' :
-                        factors.topDefectType === 'foreign_object' ? 'text-accent' :
-                        'text-gray-400'
-                      }`}>
-                        {factors.topDefectTypeLabel}
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-[10px] text-gray-500 w-14 shrink-0 pt-0.5">高风险点</span>
-                      <div className="flex flex-wrap gap-1.5 flex-1">
-                        {factors.topPoints.length > 0 ? (
-                          factors.topPoints.map(({ point, defectCount }) => (
-                            <Link
-                              key={point.id}
-                              to={`/points/${point.id}`}
-                              className="text-xs px-2 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors flex items-center gap-0.5"
-                            >
-                              {point.name}
-                              <ChevronRight className="w-3 h-3" />
-                            </Link>
-                          ))
-                        ) : (
-                            <span className="text-xs text-gray-500">暂无高风险点位</span>
-                          )}
+              {factorAnalysisAreas.map(({ area, factors }) => {
+                const hasDefects = factors.allTypes.some(([, c]) => c > 0)
+                return (
+                  <div key={area.id} className="bg-navy-900/50 rounded-lg p-3 border border-navy-700/30">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-gray-500" />
+                        <span className="text-sm text-white">{area.name}</span>
                       </div>
+                      {!hasDefects && (
+                        <span className="badge badge-healthy !text-[10px] !py-0 !px-1.5">
+                          无开放缺陷
+                        </span>
+                      )}
                     </div>
+                    {hasDefects ? (
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-[10px] text-gray-500 mb-1.5">缺陷类型分布</div>
+                          <div className="space-y-1.5">
+                            {factors.allTypes.filter(([, c]) => c > 0).map(([type, count]) => {
+                              const total = factors.allTypes.reduce((s, [, c]) => s + c, 0)
+                              const pct = total > 0 ? Math.round((count / total) * 100) : 0
+                              const color = type === 'rust' ? 'bg-status-warning' :
+                                type === 'crack' ? 'bg-status-critical' :
+                                type === 'foreign_object' ? 'bg-accent' : 'bg-gray-500'
+                              const label = type === 'rust' ? '锈蚀' :
+                                type === 'crack' ? '裂缝' :
+                                type === 'foreign_object' ? '异物' : '其他'
+                              return (
+                                <div key={type} className="flex items-center gap-2">
+                                  <span className="text-[10px] text-gray-400 w-8">{label}</span>
+                                  <div className="flex-1 h-1.5 bg-navy-800 rounded-full overflow-hidden">
+                                    <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 w-6 text-right">{count}</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-gray-500 mb-1.5">风险点位</div>
+                          <div className="flex flex-wrap gap-1">
+                            {factors.allPoints.filter(p => p.defectCount > 0).map(({ point, defectCount }) => (
+                              <Link
+                                key={point.id}
+                                to={`/points/${point.id}`}
+                                className="text-[11px] px-2 py-0.5 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors flex items-center gap-1"
+                              >
+                                {point.name}
+                                <span className="text-[9px] opacity-70">·{defectCount}项</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-3 text-center">
+                        <p className="text-[11px] text-gray-500 mb-1">该区域无未闭环缺陷</p>
+                        <p className="text-[10px] text-gray-600">健康状况良好，建议按计划正常巡检</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
 
               <div className="bg-accent/5 rounded-lg p-3 border border-accent/20 flex items-start gap-2">
                 <Lightbulb className="w-4 h-4 text-accent shrink-0 mt-0.5" />

@@ -12,6 +12,7 @@ import Defects from '@/pages/Defects'
 import DefectDetail from '@/pages/DefectDetail'
 import WorkOrders from '@/pages/WorkOrders'
 import PointProfile from '@/pages/PointProfile'
+import AreaRiskDetail from '@/pages/AreaRiskDetail'
 import Analytics from '@/pages/Analytics'
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/areas" element={<Areas />} />
           <Route path="/areas/:id" element={<AreaDetail />} />
+          <Route path="/areas/:id/risk" element={<AreaRiskDetail />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/templates/:id" element={<TemplateDetail />} />
           <Route path="/tasks" element={<Tasks />} />

@@ -1,7 +1,7 @@
 import { useAppStore } from '@/store'
 import { defectTrendData } from '@/data/mockData'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie } from 'recharts'
-import { Shield, AlertTriangle, ClipboardCheck, MapPin, ArrowRight, Clock, CheckCircle2, XCircle, Zap, UserPlus, Play, FileCheck, Wrench, Eye } from 'lucide-react'
+import { Shield, AlertTriangle, ClipboardCheck, MapPin, ArrowRight, Clock, CheckCircle2, XCircle, Zap, UserPlus, Play, FileCheck, Wrench, Eye, ClipboardList, UserCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
@@ -119,11 +119,11 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
   const pendingTasks = tasks.filter(t => t.status === 'pending').length
   const assignedTasks = tasks.filter(t => t.status === 'assigned' || t.status === 'in_progress').length
   const pendingDefects = defects.filter(d => d.status === 'pending').length
-  const workOrderPending = workOrders.filter(w => w.status === 'pending').length
-  const woCreatedDefects = defects.filter(d => d.status === 'work_order_created').length
-  const repairingDefects = defects.filter(d => d.status === 'repairing').length
-  const workOrderCompleted = workOrders.filter(w => w.status === 'completed').length
-  const closedLoop = defects.filter(d => d.status === 'closed').length
+  const confirmedDefects = defects.filter(d => d.status === 'confirmed').length
+  const pendingWorkOrders = workOrders.filter(w => w.status === 'pending').length
+  const inProgressWorkOrders = workOrders.filter(w => w.status === 'in_progress').length
+  const completedWorkOrders = workOrders.filter(w => w.status === 'completed').length
+  const verifiedWorkOrders = workOrders.filter(w => w.status === 'verified').length
 
   const todoItems = [
     {
@@ -157,20 +157,30 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
       urgency: 'info'
     },
     {
+      key: 'dispatch',
+      label: '待派单缺陷',
+      icon: ClipboardList,
+      count: confirmedDefects,
+      color: 'text-status-warning bg-status-warning/15',
+      badge: 'badge-warning',
+      to: '/defects',
+      urgency: 'warning'
+    },
+    {
       key: 'wo-pending',
-      label: '已建工单待处理',
+      label: '待处理工单',
       icon: FileCheck,
-      count: workOrderPending + woCreatedDefects,
+      count: pendingWorkOrders,
       color: 'text-status-warning bg-status-warning/15',
       badge: 'badge-warning',
       to: '/workorders',
       urgency: 'warning'
     },
     {
-      key: 'repairing',
-      label: '维修中缺陷',
+      key: 'wo-progress',
+      label: '维修中工单',
       icon: Wrench,
-      count: repairingDefects,
+      count: inProgressWorkOrders,
       color: 'text-status-critical bg-status-critical/15',
       badge: 'badge-critical',
       to: '/workorders',
@@ -180,7 +190,7 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
       key: 'wo-completed',
       label: '待验收工单',
       icon: ClipboardCheck,
-      count: workOrderCompleted,
+      count: completedWorkOrders,
       color: 'text-status-critical bg-status-critical/15',
       badge: 'badge-critical',
       to: '/workorders',
@@ -196,7 +206,7 @@ function TodoList({ defects, tasks, workOrders }: { defects: any[]; tasks: any[]
         <h3 className="text-sm font-display font-semibold text-white">待办统计</h3>
         <div className="flex items-center gap-2">
           <span className="badge badge-critical">{totalTodo}项待处理</span>
-          <span className="badge badge-healthy">已闭环 {closedLoop}</span>
+          <span className="badge badge-healthy">已闭环 {verifiedWorkOrders}</span>
         </div>
       </div>
       <div className="space-y-2">

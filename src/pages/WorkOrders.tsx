@@ -5,10 +5,12 @@ import {
   Wrench, Calendar, Filter, Search, ChevronLeft, ChevronRight,
   User, Clock, Check, AlertTriangle, X, UserCheck, Flag,
   ArrowRight, Eye, AlertCircle, CheckCircle2, History,
-  FileText, Camera, MapPin
+  FileText, Camera, MapPin, Users, LayoutGrid
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { WorkOrder, WorkOrderPriority, WorkOrderStatus, Defect } from '@/types'
+
+type ViewMode = 'week' | 'month' | 'assignee'
 
 const priorityConfig: Record<WorkOrderPriority, { label: string; badge: string; glow?: string }> = {
   urgent: { label: '紧急', badge: 'badge badge-critical', glow: 'glow-critical' },
@@ -54,6 +56,27 @@ function getWeekDates(baseDate: Date): Date[] {
   return dates
 }
 
+function getMonthDates(baseDate: Date): Date[] {
+  const year = baseDate.getFullYear()
+  const month = baseDate.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const dates: Date[] = []
+  
+  const firstDayWeekday = firstDay.getDay() || 7
+  const startDate = new Date(firstDay)
+  startDate.setDate(firstDay.getDate() - (firstDayWeekday - 1))
+  
+  const totalDays = 42
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(startDate)
+    d.setDate(startDate.getDate() + i)
+    dates.push(d)
+  }
+  
+  return dates
+}
+
 function formatDate(d: Date): string {
   return d.toISOString().split('T')[0]
 }
@@ -88,7 +111,9 @@ export default function WorkOrders() {
   const [priorityFilter, setPriorityFilter] = useState<'all' | WorkOrderPriority>('all')
   const [areaFilter, setAreaFilter] = useState<string>('all')
   const [assigneeSearch, setAssigneeSearch] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [weekOffset, setWeekOffset] = useState(0)
+  const [monthOffset, setMonthOffset] = useState(0)
   const [selectedWOId, setSelectedWOId] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -98,8 +123,14 @@ export default function WorkOrders() {
     return getWeekDates(base)
   }, [weekOffset])
 
-  const weekStartStr = formatDate(weekDates[0])
-  const weekEndStr = formatDate(weekDates[6])
+  const monthDates = useMemo(() => {
+    const base = new Date()
+    base.setMonth(base.getMonth() + monthOffset)
+    return getMonthDates(base)
+  }, [monthOffset])
+
+  const currentMonthLabel = `${monthDates[20].getFullYear()}年${monthDates[20].getMonth() + 1}月`
+  const currentWeekLabel = `${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日 - ${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日`
 
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(wo => {
@@ -124,6 +155,40 @@ export default function WorkOrders() {
     })
     return map
   }, [filteredWorkOrders, weekDates])
+
+  const workOrdersByMonthDate = useMemo(() => {
+    const map: Record<string, WorkOrder[]> = {}
+    monthDates.forEach(d => { map[formatDate(d)] = [] })
+    filteredWorkOrders.forEach(wo => {
+      if (map[wo.dueDate] !== undefined) {
+        map[wo.dueDate].push(wo)
+      }
+    })
+    return map
+  }, [filteredWorkOrders, monthDates])
+
+  const assigneeGroups = useMemo(() => {
+    const map: Record<string, WorkOrder[]> = {}
+    filteredWorkOrders.forEach(wo => {
+      if (!map[wo.assignee]) map[wo.assignee] = []
+      map[wo.assignee].push(wo)
+    })
+    return Object.entries(map).map(([name, wos]) => {
+      const total = wos.length
+      const pending = wos.filter(w => w.status === 'pending').length
+      const inProgress = wos.filter(w => w.status === 'in_progress').length
+      const completed = wos.filter(w => w.status === 'completed').length
+      const verified = wos.filter(w => w.status === 'verified').length
+      const overdue = wos.filter(w => w.status !== 'verified' && w.dueDate < todayStr).length
+      const soonDue = wos.filter(w => {
+        if (w.status === 'verified') return false
+        const diff = daysBetween(todayStr, w.dueDate)
+        return diff >= 0 && diff <= 3
+      }).length
+      const loadScore = pending * 3 + inProgress * 2 + completed * 1 + overdue * 5
+      return { name, wos, total, pending, inProgress, completed, verified, overdue, soonDue, loadScore }
+    }).sort((a, b) => b.loadScore - a.loadScore)
+  }, [filteredWorkOrders, todayStr])
 
   const stats = useMemo(() => {
     const total = workOrders.length
@@ -180,18 +245,47 @@ export default function WorkOrders() {
     updateWorkOrderStatus(selectedWO.id, action.next)
   }
 
-  const currentWeekLabel = `${weekDates[0].getMonth() + 1}月${weekDates[0].getDate()}日 - ${weekDates[6].getMonth() + 1}月${weekDates[6].getDate()}日`
-
   return (
     <div className="h-full flex flex-col">
       <div className="mb-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
-            <Wrench className="w-5 h-5 text-accent" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
+              <Wrench className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-xl font-display font-bold text-white">维修计划</h1>
+              <p className="text-sm text-gray-500">多视图管理维修工单与排期</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-display font-bold text-white">维修计划</h1>
-            <p className="text-sm text-gray-500">按周排期视图管理维修工单</p>
+          <div className="flex items-center gap-1 p-1 rounded-lg bg-navy-800 border border-navy-700/30">
+            <button
+              onClick={() => setViewMode('week')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'week' ? 'bg-accent/20 text-accent' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              周视图
+            </button>
+            <button
+              onClick={() => setViewMode('month')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'month' ? 'bg-accent/20 text-accent' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              月视图
+            </button>
+            <button
+              onClick={() => setViewMode('assignee')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                viewMode === 'assignee' ? 'bg-accent/20 text-accent' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              按负责人
+            </button>
           </div>
         </div>
 
@@ -256,126 +350,305 @@ export default function WorkOrders() {
       </div>
 
       <div className="flex-1 flex gap-5 min-h-0">
-        <div className="w-[70%] flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setWeekOffset(o => o - 1)}
-                className="w-8 h-8 rounded-lg bg-navy-800 hover:bg-navy-700 border border-navy-600/30 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 border border-navy-600/30">
-                <Calendar className="w-4 h-4 text-accent" />
-                <span className="text-sm font-medium text-white">{currentWeekLabel}</span>
-              </div>
-              <button
-                onClick={() => setWeekOffset(o => o + 1)}
-                className="w-8 h-8 rounded-lg bg-navy-800 hover:bg-navy-700 border border-navy-600/30 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setWeekOffset(0)}
-                className="btn-ghost text-xs py-1.5 px-3"
-              >
-                本周
-              </button>
-            </div>
-          </div>
-
-          <div className="flex-1 grid grid-cols-7 gap-2.5 min-h-0 overflow-hidden">
-            {weekDates.map((date, idx) => {
-              const dateStr = formatDate(date)
-              const isToday = dateStr === todayStr
-              const isWeekend = idx >= 5
-              const dayWOs = workOrdersByDate[dateStr] || []
-              return (
-                <div
-                  key={dateStr}
-                  className={`flex flex-col rounded-xl border overflow-hidden ${
-                    isToday
-                      ? 'bg-accent/5 border-accent/30'
-                      : isWeekend
-                        ? 'bg-navy-900/40 border-navy-700/20'
-                        : 'bg-navy-800/60 border-navy-700/30'
-                  }`}
-                >
-                  <div className={`px-2 py-2.5 border-b ${
-                    isToday
-                      ? 'bg-accent/10 border-accent/20'
-                      : 'border-navy-700/30'
-                  }`}>
-                    <div className={`text-[11px] mb-0.5 ${
-                      isToday ? 'text-accent font-medium' : 'text-gray-500'
-                    }`}>
-                      {weekDays[idx]}
-                    </div>
-                    <div className={`text-lg font-display font-bold ${
-                      isToday ? 'text-accent' : isWeekend ? 'text-gray-400' : 'text-white'
-                    }`}>
-                      {date.getDate()}
-                    </div>
+        <div className={`${viewMode === 'assignee' ? 'w-full' : viewMode === 'month' ? 'w-[75%]' : 'w-[70%]'} flex flex-col min-h-0`}>
+          {viewMode === 'week' && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setWeekOffset(o => o - 1)}
+                    className="w-8 h-8 rounded-lg bg-navy-800 hover:bg-navy-700 border border-navy-600/30 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 border border-navy-600/30">
+                    <Calendar className="w-4 h-4 text-accent" />
+                    <span className="text-sm font-medium text-white">{currentWeekLabel}</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                    {dayWOs.length === 0 && (
-                      <div className="text-center py-6 text-[11px] text-gray-600">
-                        无工单
+                  <button
+                    onClick={() => setWeekOffset(o => o + 1)}
+                    className="w-8 h-8 rounded-lg bg-navy-800 hover:bg-navy-700 border border-navy-600/30 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setWeekOffset(0)}
+                    className="btn-ghost text-xs py-1.5 px-3"
+                  >
+                    本周
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 grid grid-cols-7 gap-2.5 min-h-0 overflow-hidden">
+                {weekDates.map((date, idx) => {
+                  const dateStr = formatDate(date)
+                  const isToday = dateStr === todayStr
+                  const isWeekend = idx >= 5
+                  const dayWOs = workOrdersByDate[dateStr] || []
+                  return (
+                    <div
+                      key={dateStr}
+                      className={`flex flex-col rounded-xl border overflow-hidden ${
+                        isToday
+                          ? 'bg-accent/5 border-accent/30'
+                          : isWeekend
+                            ? 'bg-navy-900/40 border-navy-700/20'
+                            : 'bg-navy-800/60 border-navy-700/30'
+                      }`}
+                    >
+                      <div className={`px-2 py-2.5 border-b ${
+                        isToday
+                          ? 'bg-accent/10 border-accent/20'
+                          : 'border-navy-700/30'
+                      }`}>
+                        <div className={`text-[11px] mb-0.5 ${
+                          isToday ? 'text-accent font-medium' : 'text-gray-500'
+                        }`}>
+                          {weekDays[idx]}
+                        </div>
+                        <div className={`text-lg font-display font-bold ${
+                          isToday ? 'text-accent' : isWeekend ? 'text-gray-400' : 'text-white'
+                        }`}>
+                          {date.getDate()}
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                        {dayWOs.length === 0 && (
+                          <div className="text-center py-6 text-[11px] text-gray-600">
+                            无工单
+                          </div>
+                        )}
+                        {dayWOs.map(wo => {
+                          const defect = defects.find(d => d.id === wo.defectId)
+                          const area = defect ? areas.find(a => a.id === defect.areaId) : null
+                          const pc = priorityConfig[wo.priority]
+                          const overdue = isOverdue(wo)
+                          return (
+                            <motion.div
+                              key={wo.id}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              onClick={() => openDrawer(wo)}
+                              className={`rounded-lg p-2.5 cursor-pointer transition-all group ${
+                                overdue
+                                  ? 'bg-status-critical/10 border border-status-critical/40 hover:border-status-critical/60'
+                                  : pc.glow
+                                    ? `bg-navy-900/70 border border-navy-600/40 hover:border-navy-500 ${pc.glow}`
+                                    : 'bg-navy-900/70 border border-navy-600/40 hover:border-navy-500'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-1 mb-1.5">
+                                <span className="text-[11px] text-gray-400 truncate flex-1" title={area?.name}>
+                                  <MapPin className="w-3 h-3 inline mr-0.5 -mt-0.5" />
+                                  {area?.name?.slice(0, 8) || '-'}
+                                </span>
+                                <span className={`${pc.badge} !text-[10px] !py-0 !px-1.5 flex-shrink-0`}>
+                                  <Flag className="w-2.5 h-2.5 mr-0.5" />
+                                  {pc.label}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-gray-300 mb-1.5 line-clamp-2 leading-snug">
+                                {wo.description.slice(0, 24)}{wo.description.length > 24 ? '…' : ''}
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                                  <User className="w-2.5 h-2.5" />
+                                  <span className="truncate max-w-[50px]">{wo.assignee}</span>
+                                </div>
+                                {overdue && (
+                                  <AlertCircle className="w-3 h-3 text-status-critical" />
+                                )}
+                              </div>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {viewMode === 'month' && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setMonthOffset(o => o - 1)}
+                    className="w-8 h-8 rounded-lg bg-navy-800 hover:bg-navy-700 border border-navy-600/30 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-navy-800 border border-navy-600/30">
+                    <Calendar className="w-4 h-4 text-accent" />
+                    <span className="text-sm font-medium text-white">{currentMonthLabel}</span>
+                  </div>
+                  <button
+                    onClick={() => setMonthOffset(o => o + 1)}
+                    className="w-8 h-8 rounded-lg bg-navy-800 hover:bg-navy-700 border border-navy-600/30 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setMonthOffset(0)}
+                    className="btn-ghost text-xs py-1.5 px-3"
+                  >
+                    本月
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-1.5 min-h-0 overflow-hidden">
+                {monthDates.map((date, idx) => {
+                  const dateStr = formatDate(date)
+                  const isToday = dateStr === todayStr
+                  const isCurrentMonth = date.getMonth() === monthDates[20].getMonth()
+                  const isWeekend = idx % 7 >= 5
+                  const dayWOs = workOrdersByMonthDate[dateStr] || []
+                  return (
+                    <div
+                      key={dateStr + idx}
+                      className={`flex flex-col rounded-lg border overflow-hidden ${
+                        !isCurrentMonth
+                          ? 'bg-navy-900/20 border-navy-800/30 opacity-40'
+                          : isToday
+                            ? 'bg-accent/5 border-accent/30'
+                            : isWeekend
+                              ? 'bg-navy-900/40 border-navy-700/20'
+                              : 'bg-navy-800/50 border-navy-700/30'
+                      }`}
+                    >
+                      <div className={`px-1.5 py-1 border-b ${
+                        isToday ? 'bg-accent/10 border-accent/20' : 'border-navy-700/20'
+                      }`}>
+                        <div className={`text-xs font-display font-bold ${
+                          !isCurrentMonth ? 'text-gray-600' :
+                          isToday ? 'text-accent' :
+                          isWeekend ? 'text-gray-500' : 'text-gray-300'
+                        }`}>
+                          {date.getDate()}
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-1 space-y-1">
+                        {dayWOs.slice(0, 3).map(wo => {
+                          const pc = priorityConfig[wo.priority]
+                          const overdue = isOverdue(wo)
+                          return (
+                            <div
+                              key={wo.id}
+                              onClick={() => openDrawer(wo)}
+                              className={`text-[10px] px-1.5 py-0.5 rounded cursor-pointer truncate ${
+                                overdue
+                                  ? 'bg-status-critical/20 text-status-critical'
+                                  : `bg-navy-700/40 text-gray-300 hover:bg-navy-700/70 ${
+                                      wo.priority === 'urgent' ? 'border-l-2 border-status-critical' :
+                                      wo.priority === 'high' ? 'border-l-2 border-status-warning' : ''
+                                    }`
+                              }`}
+                              title={wo.description}
+                            >
+                              {wo.description.slice(0, 14)}
+                            </div>
+                          )
+                        })}
+                        {dayWOs.length > 3 && (
+                          <div className="text-[9px] text-gray-500 pl-1.5">+{dayWOs.length - 3} 更多</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {viewMode === 'assignee' && (
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                {assigneeGroups.map(group => (
+                  <motion.div
+                    key={group.name}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="card p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center">
+                          <span className="text-sm font-semibold text-accent">{group.name.slice(0, 1)}</span>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-white">{group.name}</h3>
+                          <p className="text-[11px] text-gray-500">共 {group.total} 个工单</p>
+                        </div>
+                      </div>
+                      {group.overdue > 0 && (
+                        <span className="badge badge-critical !text-[10px]">逾期 {group.overdue}</span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-navy-900/50 rounded-lg p-2 text-center">
+                        <div className="stat-number text-lg text-status-info">{group.pending}</div>
+                        <div className="text-[10px] text-gray-500">待处理</div>
+                      </div>
+                      <div className="bg-navy-900/50 rounded-lg p-2 text-center">
+                        <div className="stat-number text-lg text-status-warning">{group.inProgress}</div>
+                        <div className="text-[10px] text-gray-500">处理中</div>
+                      </div>
+                      <div className="bg-navy-900/50 rounded-lg p-2 text-center">
+                        <div className="stat-number text-lg text-status-healthy">{group.verified}</div>
+                        <div className="text-[10px] text-gray-500">已闭环</div>
+                      </div>
+                    </div>
+
+                    {group.soonDue > 0 && (
+                      <div className="text-[10px] text-status-warning mb-2 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        3天内到期 {group.soonDue} 项
                       </div>
                     )}
-                    {dayWOs.map(wo => {
-                      const defect = defects.find(d => d.id === wo.defectId)
-                      const area = defect ? areas.find(a => a.id === defect.areaId) : null
-                      const pc = priorityConfig[wo.priority]
-                      const overdue = isOverdue(wo)
-                      return (
-                        <motion.div
-                          key={wo.id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          onClick={() => openDrawer(wo)}
-                          className={`rounded-lg p-2.5 cursor-pointer transition-all group ${
-                            overdue
-                              ? 'bg-status-critical/10 border border-status-critical/40 hover:border-status-critical/60'
-                              : pc.glow
-                                ? `bg-navy-900/70 border border-navy-600/40 hover:border-navy-500 ${pc.glow}`
-                                : 'bg-navy-900/70 border border-navy-600/40 hover:border-navy-500'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-1 mb-1.5">
-                            <span className="text-[11px] text-gray-400 truncate flex-1" title={area?.name}>
-                              <MapPin className="w-3 h-3 inline mr-0.5 -mt-0.5" />
-                              {area?.name?.slice(0, 8) || '-'}
+
+                    <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
+                      <p className="text-[10px] text-gray-500 mb-1">未闭环工单</p>
+                      {group.wos.filter(w => w.status !== 'verified').slice(0, 5).map(wo => {
+                        const pc = priorityConfig[wo.priority]
+                        const overdue = isOverdue(wo)
+                        return (
+                          <div
+                            key={wo.id}
+                            onClick={() => openDrawer(wo)}
+                            className={`text-[11px] px-2 py-1.5 rounded cursor-pointer flex items-center justify-between gap-2 ${
+                              overdue
+                                ? 'bg-status-critical/10 hover:bg-status-critical/20 border border-status-critical/30'
+                                : 'bg-navy-900/50 hover:bg-navy-800/70 border border-navy-700/30'
+                            }`}
+                          >
+                            <span className="truncate text-gray-300 flex-1">
+                              {wo.description.slice(0, 18)}
                             </span>
-                            <span className={`${pc.badge} !text-[10px] !py-0 !px-1.5 flex-shrink-0`}>
-                              <Flag className="w-2.5 h-2.5 mr-0.5" />
+                            <span className={`${pc.badge} !text-[9px] !py-0 !px-1 flex-shrink-0`}>
                               {pc.label}
                             </span>
                           </div>
-                          <div className="text-[11px] text-gray-300 mb-1.5 line-clamp-2 leading-snug">
-                            {wo.description.slice(0, 24)}{wo.description.length > 24 ? '…' : ''}
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                              <User className="w-2.5 h-2.5" />
-                              <span className="truncate max-w-[50px]">{wo.assignee}</span>
-                            </div>
-                            {overdue && (
-                              <AlertCircle className="w-3 h-3 text-status-critical" />
-                            )}
-                          </div>
-                        </motion.div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                        )
+                      })}
+                      {group.wos.filter(w => w.status !== 'verified').length === 0 && (
+                        <p className="text-[10px] text-gray-600 text-center py-2">所有工单已闭环</p>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="w-[30%] flex flex-col gap-4 overflow-y-auto min-h-0">
-          <div className="grid grid-cols-2 gap-2.5">
+        {viewMode !== 'assignee' && (
+          <div className={`${viewMode === 'month' ? 'w-[25%]' : 'w-[30%]'} flex flex-col gap-4 overflow-y-auto min-h-0`}>
+            <div className="grid grid-cols-2 gap-2.5">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -489,6 +762,7 @@ export default function WorkOrders() {
             </div>
           </motion.div>
         </div>
+        )}
       </div>
 
       <AnimatePresence>
